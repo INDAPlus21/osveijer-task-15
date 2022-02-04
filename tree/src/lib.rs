@@ -1,11 +1,11 @@
-use std::ptr;
+use std::rc::Rc;
 
 #[derive(PartialEq,Clone,Debug)]
 struct Node {
     value: usize,
-    left: Box<Option<Node>>,
-    right: Box<Option<Node>>,
-    parent: Box<Option<Node>>,
+    left: Rc<Option<Node>>,
+    right: Rc<Option<Node>>,
+    parent: Rc<Option<Node>>,
     colour: bool
 }
 
@@ -13,16 +13,16 @@ impl Node {
     fn new(_value: usize) -> Node {
         Node {
             value: _value,
-            left: Box::new(None),
-            right: Box::new(None),
-            parent: Box::new(None),
+            left: Rc::new(None),
+            right: Rc::new(None),
+            parent: Rc::new(None),
             colour: true
         }
     }
 
     
 
-    fn get_uncle(self) -> Box<Option<Node>> {
+    fn get_uncle(self) -> Rc<Option<Node>> {
         if self.parent.is_some() {
             let parent = self.parent.clone().unwrap();
             if !parent.parent.is_none() {
@@ -34,15 +34,15 @@ impl Node {
                     return grandparent.right;
                 }
                 else {
-                    return Box::new(None);
+                    return Rc::new(None);
                 }
             }
             else {
-                return Box::new(None);
+                return Rc::new(None);
             }
         }
         else {
-            return Box::new(None);
+            return Rc::new(None);
         }
     }
 
@@ -55,27 +55,28 @@ impl Node {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 struct Tree {
-    root: Box<Option<Node>>
+    root: Rc<Option<Node>>
 }
 
 impl Tree {
     pub fn new() -> Tree{
         Tree {
-            root: Box::new(None)
+            root: Rc::new(None)
         }
     }
 
     pub fn insert(mut self, value: usize) -> Tree {
         let mut node = Node::new(value);
-        self = self.clone().insert_node(&mut node, Box::new(None));
+        self = self.clone().insert_node(&mut node, Rc::new(None));
+        println!("{:?}", self);
         self
     }
 
     fn fix_tree(mut self, node: &mut Node) {
         if self.root.is_none() {
-            self.root = Box::new(Some(node.clone()));
+            self.root = Rc::new(Some(node.clone()));
             node.colour = false; 
         }
         else {
@@ -120,16 +121,16 @@ impl Tree {
         }
         temp.parent = node.clone().parent;
         if temp.clone().parent.is_none() {
-            self.root = Box::new(Some(temp.clone()));
+            self.root = Rc::new(Some(temp.clone()));
         }
         else if !node.clone().parent.unwrap().left.is_none() && node.clone().is_left_child() {
-            node.clone().parent.unwrap().left = Box::new(Some(temp.clone()));
+            node.clone().parent.unwrap().left = Rc::new(Some(temp.clone()));
         }
         else {
-            node.clone().parent.unwrap().right = Box::new(Some(temp.clone()));
+            node.clone().parent.unwrap().right = Rc::new(Some(temp.clone()));
         }
-        temp.left = Box::new(Some(node.clone()));
-        node.parent = Box::new(Some(temp));
+        temp.left = Rc::new(Some(node.clone()));
+        node.parent = Rc::new(Some(temp));
     }
 
     fn right_rotate(mut self, mut node: Node) {
@@ -141,35 +142,35 @@ impl Tree {
         }
         temp.parent = node.clone().parent;
         if temp.clone().parent.is_none() {
-            self.root = Box::new(Some(temp.clone()));
+            self.root = Rc::new(Some(temp.clone()));
         }
         else if !node.clone().parent.unwrap().left.is_none() && node.clone().is_left_child() {
-            node.clone().parent.unwrap().left = Box::new(Some(temp.clone()));
+            node.clone().parent.unwrap().left = Rc::new(Some(temp.clone()));
         }
         else {
-            node.clone().parent.unwrap().right = Box::new(Some(temp.clone()));
+            node.clone().parent.unwrap().right = Rc::new(Some(temp.clone()));
         }
-        temp.right = Box::new(Some(node.clone()));
-        node.parent = Box::new(Some(temp));
+        temp.right = Rc::new(Some(node.clone()));
+        node.parent = Rc::new(Some(temp));
     }
 
-    fn insert_node(mut self, inserting: &mut Node, mut current: Box<Option<Node>>) -> Tree {
+    fn insert_node(mut self, inserting: &mut Node, mut current: Rc<Option<Node>>) -> Tree {
         if self.root.is_none() {
-            println!("inserting root");
-            self.root = Box::new(Some(inserting.clone()));
-            println!("{:?}",self.root);
+            self.root = Rc::new(Some(inserting.clone()));
             return self;
         }
         else if current.clone().is_none() {
             current = self.root.clone();
         }
         if inserting.value >= current.clone().unwrap().value {
-            println!("bigger than {:?}", current.clone());
-            if current.clone().unwrap().right.is_none() {
-                println!("inserting bigger");
-                current.clone().unwrap().right = Box::new(Some(inserting.clone()));
-                println!("{:?} {}",current.clone().unwrap().right, current.clone() == current);
-                //inserting.parent = current.clone();
+            if current.clone().take().unwrap().right.is_none() {
+                let mut curclo = current.clone().unwrap();
+                curclo.right = Rc::new(Some(inserting.clone()));
+                current = Rc::new(Some(curclo));
+                if current.clone().unwrap().is_left_child() {
+
+                }
+                inserting.parent = current.clone();
                 self
             }
             else {
@@ -178,7 +179,7 @@ impl Tree {
         }
         else {
             if current.clone().unwrap().left.is_none() {
-                current.clone().unwrap().left = Box::new(Some(inserting.clone()));
+                current.clone().unwrap().left = Rc::new(Some(inserting.clone()));
                 inserting.parent = current.clone();
                 self
             }
